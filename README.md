@@ -300,6 +300,8 @@ Todos os métodos abaixo estão em `InvoicingClient`.
 | `invoicePdf()` | `download($id)` → bytes PDF (binário) |
 | `invoiceEmails()` | `send($id, $payload)` → JSON conforme API |
 | `punchTimer()` | Cronómetro (`/v1/punch-timer/*`) — **API 0.7.1+**; ver [secção 16](#16-punch-timer-api-071) |
+| `userMeApiKeys()` | `POST /v1/users/me/api-keys` — só JWT (login); pré-condições e erros em [§15.1.1](#1511-criação-de-chaves-api) |
+| `adminApiKeys()` | `POST /v1/admin/api-keys` — HTTP Basic (conta); pré-condições e erros em [§15.1.1](#1511-criação-de-chaves-api) |
 
 Respostas JSON são **arrays PHP** associativos (`snake_case` como na API). O PDF **não** é JSON — é `string` binária.
 
@@ -434,11 +436,21 @@ A API usa vários estilos de autenticação; o SDK expõe **caminhos separados**
 | Modo | Quando usar | Método no `InvoicingClient` | Cabeçalhos enviados pelo SDK |
 |------|----------------|-----------------------------|------------------------------|
 | **API key (invoicing)** | Recursos de dados e **`GET /v1/me`** (perfil do utilizador vinculado à chave) | `sendV1`, `getV1`, ou facades (`clients()`, `me()`, `invoices()`, …) | `X-API-Key` + `Authorization: Bearer` com **a mesma** chave (`INVOICING_API_KEY` / `Config::apiKey`) |
-| **JWT** | Sessão de utilizador (`resend-verification`, chaves por utilizador na fase 22) | `sendV1WithJwt($method, $path, $jwt, $options?)` | Só `Authorization: Bearer <jwt>`. **Não** usa `INVOICING_API_KEY` como token. |
-| **HTTP Basic** | Rotas de conta/admin com email+palavra-passe (ex.: `POST /v1/admin/api-keys`) | `sendV1WithBasic($method, $path, $user, $password, $options?)` | Só `Authorization: Basic <base64>` |
+| **JWT** | Sessão de utilizador (`resend-verification`, criação de chave em `userMeApiKeys()->create`) | `sendV1WithJwt($method, $path, $jwt, $options?)` | Só `Authorization: Bearer <jwt>`. **Não** usa `INVOICING_API_KEY` como token. |
+| **HTTP Basic** | Rotas de conta/admin com email+palavra-passe (ex.: `POST /v1/admin/api-keys` via `adminApiKeys()->create`) | `sendV1WithBasic($method, $path, $user, $password, $options?)` | Só `Authorization: Basic <base64>` |
 | **Público** | Registo, login, verify-email sem credenciais de invoicing | `sendV1Public($method, $path, $options?)` | Nenhum cabeçalho de auth por defeito; podes passar cabeçalhos em `$options['headers']` se precisares |
 
-O SDK expõe **`$client->auth()`** (registo, login, verify-email públicos; `resend-verification` com JWT) e **`$client->me()`** para `GET /v1/me` com transporte de API key. A criação de chaves (`/v1/users/me/api-keys`, admin) fica na **fase 22**.
+O SDK expõe **`$client->auth()`** (registo, login, verify-email públicos; `resend-verification` com JWT), **`$client->me()`** para `GET /v1/me` com API key de invoicing, e os recursos de criação de chaves em [§15.1.1](#1511-criação-de-chaves-api).
+
+#### 15.1.1 Criação de chaves API
+
+Corpo opcional em ambos: `label` (string), `expires_at` (ISO 8601 ou `null` para sem expiração). Resposta **201** inclui `id`, `api_key`, `label`, `expires_at`.
+
+- **`$client->userMeApiKeys()->create($jwt, [...])`** — `$jwt` é o **access token** de `$client->auth()->login(...)`. Transporte **só JWT** (sem `X-API-Key`). **Pré-condição:** e-mail da conta verificado (`GET /v1/auth/verify-email?token=...`). Códigos típicos em `error.code`: `EMAIL_NOT_VERIFIED` (403), `UNAUTHORIZED` (401), `BAD_REQUEST` (400); em ambiente sem migrações pode surgir `DATABASE_NOT_READY` (503), como noutros `/v1`.
+
+- **`$client->adminApiKeys()->create($email, $password, [...])`** — credenciais da **conta** em HTTP Basic (sem token de setup legado, sem JWT neste endpoint). **Pré-condição:** e-mail dessa conta verificado. Códigos típicos: `UNAUTHORIZED` (401), `EMAIL_NOT_VERIFIED` (403), `BAD_REQUEST` (400), `DATABASE_NOT_READY` (503).
+
+Em ambos os fluxos, captura **`Lecabe\Invoicing\Exception\ApiException`** e usa **`$e->errorCode`** e **`$e->httpStatus`** conforme a API — **não** reinterpretes o erro no cliente (os testes do SDK garantem a propagação de cabeçalhos e de códigos como `EMAIL_NOT_VERIFIED`).
 
 ### 15.2 Identidade — `GET /v1/me` e `USER_CONTEXT_NOT_AVAILABLE`
 
@@ -450,6 +462,7 @@ Chama **`$client->me()->get()`** com o mesmo transporte de **API key de invoicin
 ### 15.3 Resumo
 
 - **Recursos existentes** (facades): **`X-API-Key: <key>`** e **`Authorization: Bearer <key>`** (o mesmo `<key>` da configuração).
+- **Criação de chaves:** `userMeApiKeys()` (JWT) e `adminApiKeys()` (Basic) — sem `X-API-Key` nesses pedidos; erros via `ApiException` como em [§15.1.1](#1511-criação-de-chaves-api).
 - **`/health`** e **`/ready`**: sem estes cabeçalhos.
 
 ---
