@@ -8,6 +8,7 @@ use GuzzleHttp\Client;
 use GuzzleHttp\ClientInterface;
 use Lecabe\Invoicing\Exception\ApiException;
 use Lecabe\Invoicing\Request\RequestBuilder;
+use Lecabe\Invoicing\Resources\AdminApiKeys;
 use Lecabe\Invoicing\Resources\Auth;
 use Lecabe\Invoicing\Resources\Clients;
 use Lecabe\Invoicing\Resources\InvoiceEmails;
@@ -33,6 +34,7 @@ use Lecabe\Invoicing\System\Ready;
  *
  * **Auth resource:** {@see auth} — register/login/verify-email via {@see sendV1Public}; resend-verification via {@see sendV1WithJwt}.
  * **User API keys:** {@see userMeApiKeys} — create key via {@see sendV1WithJwt} (`POST /v1/users/me/api-keys`); JWT from login only.
+ * **Admin API keys:** {@see adminApiKeys} — create key via {@see sendV1WithBasic} (`POST /v1/admin/api-keys`); account email + password.
  * **Identity:** {@see me} — user profile via {@see sendV1}; requires user-linked API key (not login JWT).
  *
  * `/health` and `/ready` are called without invoicing auth headers.
@@ -104,6 +106,14 @@ final class InvoicingClient
     public function userMeApiKeys(): UserMeApiKeys
     {
         return new UserMeApiKeys($this);
+    }
+
+    /**
+     * POST /v1/admin/api-keys — HTTP Basic (account credentials); no setup token. See {@see AdminApiKeys}.
+     */
+    public function adminApiKeys(): AdminApiKeys
+    {
+        return new AdminApiKeys($this);
     }
 
     /**
