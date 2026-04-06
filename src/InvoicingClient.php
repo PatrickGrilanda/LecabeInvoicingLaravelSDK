@@ -8,8 +8,10 @@ use GuzzleHttp\Client;
 use GuzzleHttp\ClientInterface;
 use Lecabe\Invoicing\Exception\ApiException;
 use Lecabe\Invoicing\Request\RequestBuilder;
+use Lecabe\Invoicing\Resources\Auth;
 use Lecabe\Invoicing\Resources\Clients;
 use Lecabe\Invoicing\Resources\InvoiceEmails;
+use Lecabe\Invoicing\Resources\Me;
 use Lecabe\Invoicing\Resources\InvoiceLines;
 use Lecabe\Invoicing\Resources\InvoicePdf;
 use Lecabe\Invoicing\Resources\Invoices;
@@ -27,6 +29,9 @@ use Lecabe\Invoicing\System\Ready;
  * - **JWT:** {@see sendV1WithJwt} — Bearer(JWT) only; does not use config API key as the token.
  * - **HTTP Basic:** {@see sendV1WithBasic} — account credentials for admin-style routes.
  * - **Public:** {@see sendV1Public} — no default invoicing headers (optional caller headers only).
+ *
+ * **Auth resource:** {@see auth} — register/login/verify-email via {@see sendV1Public}; resend-verification via {@see sendV1WithJwt}.
+ * **Identity:** {@see me} — user profile via {@see sendV1}; requires user-linked API key (not login JWT).
  *
  * `/health` and `/ready` are called without invoicing auth headers.
  */
@@ -73,6 +78,22 @@ final class InvoicingClient
     public function ready(): array
     {
         return (new Ready($this))->get();
+    }
+
+    /**
+     * Auth endpoints: public register/login/verify-email; JWT-only resend-verification.
+     */
+    public function auth(): Auth
+    {
+        return new Auth($this);
+    }
+
+    /**
+     * GET /v1/me — invoicing API key tied to a user. Login JWT is not accepted. See {@see Me} PHPDoc for `USER_CONTEXT_NOT_AVAILABLE`.
+     */
+    public function me(): Me
+    {
+        return new Me($this);
     }
 
     /**

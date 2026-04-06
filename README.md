@@ -433,14 +433,21 @@ A API usa vários estilos de autenticação; o SDK expõe **caminhos separados**
 
 | Modo | Quando usar | Método no `InvoicingClient` | Cabeçalhos enviados pelo SDK |
 |------|----------------|-----------------------------|------------------------------|
-| **API key (invoicing)** | Recursos de dados (clientes, projetos, tempo, faturas, PDF, e-mail, punch timer, …) | `sendV1`, `getV1`, ou facades (`clients()`, `invoices()`, …) | `X-API-Key` + `Authorization: Bearer` com **a mesma** chave (`INVOICING_API_KEY` / `Config::apiKey`) |
-| **JWT** | Sessão de utilizador (`/v1/me`, `resend-verification`, chaves por utilizador em fases futuras) | `sendV1WithJwt($method, $path, $jwt, $options?)` | Só `Authorization: Bearer <jwt>`. **Não** usa `INVOICING_API_KEY` como token. |
+| **API key (invoicing)** | Recursos de dados e **`GET /v1/me`** (perfil do utilizador vinculado à chave) | `sendV1`, `getV1`, ou facades (`clients()`, `me()`, `invoices()`, …) | `X-API-Key` + `Authorization: Bearer` com **a mesma** chave (`INVOICING_API_KEY` / `Config::apiKey`) |
+| **JWT** | Sessão de utilizador (`resend-verification`, chaves por utilizador na fase 22) | `sendV1WithJwt($method, $path, $jwt, $options?)` | Só `Authorization: Bearer <jwt>`. **Não** usa `INVOICING_API_KEY` como token. |
 | **HTTP Basic** | Rotas de conta/admin com email+palavra-passe (ex.: `POST /v1/admin/api-keys`) | `sendV1WithBasic($method, $path, $user, $password, $options?)` | Só `Authorization: Basic <base64>` |
 | **Público** | Registo, login, verify-email sem credenciais de invoicing | `sendV1Public($method, $path, $options?)` | Nenhum cabeçalho de auth por defeito; podes passar cabeçalhos em `$options['headers']` se precisares |
 
-As **fases 21–22** do roadmap do SDK acrescentarão *wrappers* de recurso para auth, `me` e criação de chaves; **esta versão** acrescenta apenas estes métodos de transporte — deves indicar `path` e `json`/`query` como nos exemplos Guzzle habituais.
+O SDK expõe **`$client->auth()`** (registo, login, verify-email públicos; `resend-verification` com JWT) e **`$client->me()`** para `GET /v1/me` com transporte de API key. A criação de chaves (`/v1/users/me/api-keys`, admin) fica na **fase 22**.
 
-### 15.2 Resumo
+### 15.2 Identidade — `GET /v1/me` e `USER_CONTEXT_NOT_AVAILABLE`
+
+Chama **`$client->me()->get()`** com o mesmo transporte de **API key de invoicing** que os outros recursos (`X-API-Key` + `Authorization: Bearer` com a mesma chave).
+
+- Se a chave for a **global** `INVOICING_API_KEY` do ambiente do servidor, ou uma chave **sem utilizador associado**, a API responde **403** com `error.code` **`USER_CONTEXT_NOT_AVAILABLE`**. O SDK propaga isto como **`ApiException`** — usa `$e->errorCode === 'USER_CONTEXT_NOT_AVAILABLE'` para distinguir de outros 403.
+- O **JWT** obtido com `$client->auth()->login(...)` **não** serve para `/v1/me` (o servidor espera API key de invoicing neste endpoint).
+
+### 15.3 Resumo
 
 - **Recursos existentes** (facades): **`X-API-Key: <key>`** e **`Authorization: Bearer <key>`** (o mesmo `<key>` da configuração).
 - **`/health`** e **`/ready`**: sem estes cabeçalhos.
