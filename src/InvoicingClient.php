@@ -14,6 +14,7 @@ use Lecabe\Invoicing\Resources\InvoiceLines;
 use Lecabe\Invoicing\Resources\InvoicePdf;
 use Lecabe\Invoicing\Resources\Invoices;
 use Lecabe\Invoicing\Resources\Projects;
+use Lecabe\Invoicing\Resources\PunchTimer;
 use Lecabe\Invoicing\Resources\TimeEntries;
 use Lecabe\Invoicing\System\Health;
 use Lecabe\Invoicing\System\Ready;
@@ -92,6 +93,14 @@ final class InvoicingClient
     public function timeEntries(): TimeEntries
     {
         return new TimeEntries($this);
+    }
+
+    /**
+     * Cronómetro tipo ponto — API **0.7.1+** (`/v1/punch-timer/*`). Requer cabeçalho `X-Punch-Actor-Id` em todos os pedidos.
+     */
+    public function punchTimer(): PunchTimer
+    {
+        return new PunchTimer($this);
     }
 
     public function invoices(): Invoices
