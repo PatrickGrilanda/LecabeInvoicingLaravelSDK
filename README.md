@@ -479,7 +479,15 @@ O cronómetro por projeto usa os mesmos cabeçalhos de API key que o resto de `/
 | `resume($actorId, $projectId, $civilTimezone?)` | `POST /v1/punch-timer/resume` | query `project_id` |
 | `days($actorId, ['from' => 'Y-m-d', 'to' => 'Y-m-d', 'project_id' => ?], $civilTimezone?)` | `GET /v1/punch-timer/days` | omitir `project_id` para agregar por actor no intervalo |
 
-Erros **409** (ex.: pausar sem `running`) e **422** (validação) mapeiam para **`ApiException`** como nos outros recursos.
+### Validação / erros
+
+- **`X-Punch-Actor-Id`:** obrigatório em todos os métodos (parâmetro `$actorId`); o SDK envia o cabeçalho em todos os pedidos. Validação de actor vazio ou timezone inválida é feita pela API — respostas **422** com `error.code` `VALIDATION_ERROR` (e mensagens alinhadas ao servidor) surgem como **`ApiException`**, tal como na [secção 9](#9-erros-apiexception).
+- **`X-Civil-Timezone`:** opcional (`$civilTimezone`); o cabeçalho só é enviado quando passas uma string não vazia. Omitir ou deixar vazio corresponde no servidor a civil **`UTC`** (ver contrato HTTP).
+- **409** `CONFLICT` (ex.: pausar sem `running`) também mapeia para **`ApiException`**.
+
+Contrato HTTP completo (cabeçalhos, query, corpo, tabela de erros): **[`docs/PUNCH-TIMER.md`](../docs/PUNCH-TIMER.md)** no repositório da API.
+
+Os testes de forma de pedido e cabeçalhos estão em `tests/Unit/PunchTimerResourceTest.php`.
 
 Exemplo mínimo:
 
