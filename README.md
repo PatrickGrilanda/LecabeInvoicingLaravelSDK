@@ -1,6 +1,6 @@
 # Lecabe Invoicing — PHP SDK (Laravel)
 
-Cliente HTTP em PHP para a API **LecabeInvoicing** (OpenAPI **0.6.0**): prefixo **`/v1`**, JSON em **snake_case**, erros no formato `{ "error": { "code", "message", "details?" } }`.
+Cliente HTTP em PHP para a API **LecabeInvoicing**: prefixo **`/v1`**, JSON em **snake_case**, erros no formato `{ "error": { "code", "message", "details?" } }`. Paridade **0.6.x** (faturas, tempo, PDF, e-mail) e **0.7.1+** para **punch timer** (`/v1/punch-timer/*`).
 
 ## Onde vive este código
 
@@ -31,6 +31,7 @@ Este README descreve **só** esse fluxo (GitHub como fonte única).
 13. [Atualizar o SDK](#13-atualizar-o-sdk)
 14. [Resolução de problemas](#14-resolução-de-problemas)
 15. [Referência rápida de autenticação](#15-referência-rápida-de-autenticação)
+16. [Punch timer (API 0.7.1+)](#16-punch-timer-api-071)
 
 ---
 
@@ -61,7 +62,7 @@ Os endpoints **`/health`** e **`/ready`** **não** enviam esses cabeçalhos.
 | **API key** | Chave válida configurada no servidor da API (modo `v1-api-key` / documentação OpenAPI) |
 | **Composer** | No projeto Laravel, para exigir o pacote via VCS |
 
-Confirma na documentação OpenAPI da tua instância (ex.: `GET /documentation`) a versão alinhada (**0.6.x**).
+Confirma na documentação OpenAPI da tua instância (ex.: `GET /documentation`) a versão alinhada (**0.6.x** para o núcleo; **0.7.1+** se usares punch timer).
 
 ---
 
@@ -296,6 +297,7 @@ Todos os métodos abaixo estão em `InvoicingClient`.
 | `invoiceLines()` | Linhas por fatura; `recalculate($invoiceId)` |
 | `invoicePdf()` | `download($id)` → bytes PDF (binário) |
 | `invoiceEmails()` | `send($id, $payload)` → JSON conforme API |
+| `punchTimer()` | Cronómetro (`/v1/punch-timer/*`) — **API 0.7.1+**; ver [secção 16](#16-punch-timer-api-071) |
 
 Respostas JSON são **arrays PHP** associativos (`snake_case` como na API). O PDF **não** é JSON — é `string` binária.
 
@@ -425,6 +427,37 @@ Com **tags** semânticas, fixa versões no `composer.json` da app para upgrades 
 
 - Cada pedido **`/v1/...`**: **`X-API-Key: <key>`** e **`Authorization: Bearer <key>`** (o mesmo `<key>`).
 - **`/health`** e **`/ready`**: sem estes cabeçalhos.
+
+---
+
+## 16. Punch timer (API 0.7.1+)
+
+O cronómetro por projeto usa os mesmos cabeçalhos de API key que o resto de `/v1`, e **em todos os pedidos** o cabeçalho obrigatório **`X-Punch-Actor-Id`** (identificador opaco do utilizador). Opcionalmente **`X-Civil-Timezone`** (IANA).
+
+| Método | Endpoint | Notas |
+|--------|----------|--------|
+| `status($actorId, $projectId, $civilTimezone?)` | `GET /v1/punch-timer/status` | query `project_id` |
+| `play($actorId, $projectId, $civilTimezone?)` | `POST /v1/punch-timer/play` | body `{ "project_id" }` |
+| `pause($actorId, $projectId, $civilTimezone?)` | `POST /v1/punch-timer/pause` | query `project_id` |
+| `resume($actorId, $projectId, $civilTimezone?)` | `POST /v1/punch-timer/resume` | query `project_id` |
+| `days($actorId, ['from' => 'Y-m-d', 'to' => 'Y-m-d', 'project_id' => ?], $civilTimezone?)` | `GET /v1/punch-timer/days` | omitir `project_id` para agregar por actor no intervalo |
+
+Erros **409** (ex.: pausar sem `running`) e **422** (validação) mapeiam para **`ApiException`** como nos outros recursos.
+
+Exemplo mínimo:
+
+```php
+$actor = 'user-hr-id-opaque';
+$projectId = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+
+$invoicing->punchTimer()->play($actor, $projectId);
+$invoicing->punchTimer()->pause($actor, $projectId);
+
+$week = $invoicing->punchTimer()->days($actor, [
+    'from' => '2026-04-01',
+    'to' => '2026-04-06',
+]);
+```
 
 ---
 

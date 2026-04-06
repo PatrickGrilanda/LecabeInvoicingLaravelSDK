@@ -1,6 +1,6 @@
 {
     "name": "lecabe/invoicing-sdk",
-    "description": "PHP client for the LecabeInvoicing HTTP API (OpenAPI 0.6.x). Distributed via GitHub only; require from VCS in your app composer.json.",
+    "description": "PHP client for the LecabeInvoicing HTTP API (OpenAPI 0.6.x invoices/time; 0.7.1+ punch timer). Distributed via GitHub only; require from VCS in your app composer.json.",
     "type": "library",
     "license": "MIT",
     "require": {
