@@ -1,0 +1,26 @@
+{
+    "name": "lecabe/invoicing-sdk",
+    "description": "PHP client for LecabeInvoicing OpenAPI 0.8.x: invoicing (clients, projects, time entries, invoices, PDF, email), multi-auth (API key, JWT, HTTP Basic, public routes), and punch timer. Install from GitHub VCS only.",
+    "type": "library",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.2",
+        "guzzlehttp/guzzle": "^7.8"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Lecabe\\Invoicing\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Lecabe\\Invoicing\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "@php vendor/bin/phpunit"
+    }
+}
