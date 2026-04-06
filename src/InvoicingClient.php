@@ -18,6 +18,7 @@ use Lecabe\Invoicing\Resources\Invoices;
 use Lecabe\Invoicing\Resources\Projects;
 use Lecabe\Invoicing\Resources\PunchTimer;
 use Lecabe\Invoicing\Resources\TimeEntries;
+use Lecabe\Invoicing\Resources\UserMeApiKeys;
 use Lecabe\Invoicing\System\Health;
 use Lecabe\Invoicing\System\Ready;
 
@@ -31,6 +32,7 @@ use Lecabe\Invoicing\System\Ready;
  * - **Public:** {@see sendV1Public} — no default invoicing headers (optional caller headers only).
  *
  * **Auth resource:** {@see auth} — register/login/verify-email via {@see sendV1Public}; resend-verification via {@see sendV1WithJwt}.
+ * **User API keys:** {@see userMeApiKeys} — create key via {@see sendV1WithJwt} (`POST /v1/users/me/api-keys`); JWT from login only.
  * **Identity:** {@see me} — user profile via {@see sendV1}; requires user-linked API key (not login JWT).
  *
  * `/health` and `/ready` are called without invoicing auth headers.
@@ -94,6 +96,14 @@ final class InvoicingClient
     public function me(): Me
     {
         return new Me($this);
+    }
+
+    /**
+     * POST /v1/users/me/api-keys — JWT (login) only; verified email required on server. See {@see UserMeApiKeys}.
+     */
+    public function userMeApiKeys(): UserMeApiKeys
+    {
+        return new UserMeApiKeys($this);
     }
 
     /**
