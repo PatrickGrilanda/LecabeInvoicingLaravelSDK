@@ -61,6 +61,37 @@ final class InvoicingClientAuthTest extends TestCase
         self::assertSame('Bearer invoicing-api-key', $req->getHeaderLine('Authorization'));
     }
 
+    public function testSendV1MergesCustomHeadersWithV1Auth(): void
+    {
+        $container = [];
+        $history = Middleware::history($container);
+        $mock = new MockHandler([
+            new Response(200, [], '{"status":"idle"}'),
+        ]);
+        $handler = HandlerStack::create($mock);
+        $handler->push($history);
+
+        $http = new Client(['handler' => $handler]);
+        $config = new Config(baseUri: 'http://127.0.0.1:3000', apiKey: 'punch-merge-key');
+        $client = new InvoicingClient($config, $http);
+
+        $pid = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+        $client->sendV1('GET', '/v1/punch-timer/status', [
+            'query' => ['project_id' => $pid],
+            'headers' => ['X-Punch-Actor-Id' => 'actor-1'],
+        ]);
+
+        self::assertCount(1, $container);
+        $req = $container[0]['request'];
+        self::assertSame('GET', $req->getMethod());
+        self::assertStringEndsWith('/v1/punch-timer/status', $req->getUri()->getPath());
+        parse_str($req->getUri()->getQuery(), $q);
+        self::assertSame($pid, $q['project_id']);
+        self::assertSame('punch-merge-key', $req->getHeaderLine('X-API-Key'));
+        self::assertSame('Bearer punch-merge-key', $req->getHeaderLine('Authorization'));
+        self::assertSame('actor-1', $req->getHeaderLine('X-Punch-Actor-Id'));
+    }
+
     public function testSendV1WithJwtOmitsXApiKeyAndUsesJwtBearer(): void
     {
         $container = [];

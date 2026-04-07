@@ -10,6 +10,7 @@ use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Middleware;
 use GuzzleHttp\Psr7\Response;
 use Lecabe\Invoicing\Config;
+use Lecabe\Invoicing\Exception\ApiException;
 use Lecabe\Invoicing\InvoicingClient;
 use Lecabe\Invoicing\Tests\TestCase;
 
@@ -109,5 +110,58 @@ final class AuthResourceTest extends TestCase
         self::assertStringEndsWith('/v1/auth/resend-verification', $req->getUri()->getPath());
         self::assertSame('', $req->getHeaderLine('X-API-Key'));
         self::assertSame('Bearer ' . $jwt, $req->getHeaderLine('Authorization'));
+    }
+
+    public function testLoginInvalidCredentialsReturns401Unauthorized(): void
+    {
+        $body = json_encode([
+            'error' => [
+                'code' => 'UNAUTHORIZED',
+                'message' => 'Invalid email or password',
+            ],
+        ], JSON_THROW_ON_ERROR);
+        $mock = new MockHandler([new Response(401, ['Content-Type' => 'application/json'], $body)]);
+        $http = new Client([
+            'handler' => HandlerStack::create($mock),
+            'base_uri' => 'http://127.0.0.1:3000/',
+            'http_errors' => false,
+        ]);
+        $client = new InvoicingClient(new Config(apiKey: 'x'), $http);
+
+        try {
+            $client->auth()->login(['email' => 'a@b.co', 'password' => 'wrong']);
+            self::fail('Expected ApiException');
+        } catch (ApiException $e) {
+            self::assertSame(401, $e->httpStatus);
+            self::assertSame('UNAUTHORIZED', $e->errorCode);
+            self::assertStringContainsString('Invalid email or password', $e->getMessage());
+        }
+    }
+
+    public function testResendVerificationInvalidJwtReturns401Unauthorized(): void
+    {
+        $body = json_encode([
+            'error' => [
+                'code' => 'UNAUTHORIZED',
+                'message' =>
+                    'JWT required: Authorization: Bearer <access_token> from POST /v1/auth/login (API keys use X-API-Key or Bearer with the key value on other routes)',
+            ],
+        ], JSON_THROW_ON_ERROR);
+        $mock = new MockHandler([new Response(401, ['Content-Type' => 'application/json'], $body)]);
+        $http = new Client([
+            'handler' => HandlerStack::create($mock),
+            'base_uri' => 'http://127.0.0.1:3000/',
+            'http_errors' => false,
+        ]);
+        $client = new InvoicingClient(new Config(apiKey: 'x'), $http);
+
+        try {
+            $client->auth()->resendVerification('not-a-valid-jwt');
+            self::fail('Expected ApiException');
+        } catch (ApiException $e) {
+            self::assertSame(401, $e->httpStatus);
+            self::assertSame('UNAUTHORIZED', $e->errorCode);
+            self::assertStringContainsString('JWT required', $e->getMessage());
+        }
     }
 }

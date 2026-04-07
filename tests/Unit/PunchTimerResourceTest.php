@@ -229,6 +229,29 @@ final class PunchTimerResourceTest extends TestCase
         self::assertSame('actor-1', $pause->getHeaderLine('X-Punch-Actor-Id'));
     }
 
+    public function testInvalidApiKeyReturns401Unauthorized(): void
+    {
+        $err = json_encode([
+            'error' => [
+                'code' => 'UNAUTHORIZED',
+                'message' =>
+                    'Valid API key required: send X-API-Key or Authorization: Bearer <api_key> (JWT login token is not accepted on this route)',
+            ],
+        ], JSON_THROW_ON_ERROR);
+        $mock = new MockHandler([new Response(401, ['Content-Type' => 'application/json'], $err)]);
+        $container = [];
+        $client = $this->clientWithHistory($mock, $container);
+
+        try {
+            $client->punchTimer()->status('actor-1', self::SAMPLE_PROJECT);
+            self::fail('Expected ApiException');
+        } catch (ApiException $e) {
+            self::assertSame(401, $e->httpStatus);
+            self::assertSame('UNAUTHORIZED', $e->errorCode);
+            self::assertStringContainsString('Valid API key required', $e->getMessage());
+        }
+    }
+
     public function testPauseWhenIdleReturns409(): void
     {
         $err = json_encode([

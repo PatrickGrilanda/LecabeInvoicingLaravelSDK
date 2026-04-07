@@ -71,4 +71,31 @@ final class MeResourceTest extends TestCase
             self::assertStringContainsString('not tied to a user', $e->getMessage());
         }
     }
+
+    public function testGetWithInvalidApiKeyReturns401Unauthorized(): void
+    {
+        $body = json_encode([
+            'error' => [
+                'code' => 'UNAUTHORIZED',
+                'message' =>
+                    'Valid API key required: send X-API-Key or Authorization: Bearer <api_key> (JWT login token is not accepted).',
+            ],
+        ], JSON_THROW_ON_ERROR);
+        $mock = new MockHandler([new Response(401, ['Content-Type' => 'application/json'], $body)]);
+        $http = new Client([
+            'handler' => HandlerStack::create($mock),
+            'base_uri' => 'http://127.0.0.1:3000/',
+            'http_errors' => false,
+        ]);
+        $client = new InvoicingClient(new Config(apiKey: 'invalid-or-unknown-key'), $http);
+
+        try {
+            $client->me()->get();
+            self::fail('Expected ApiException');
+        } catch (ApiException $e) {
+            self::assertSame(401, $e->httpStatus);
+            self::assertSame('UNAUTHORIZED', $e->errorCode);
+            self::assertStringContainsString('Valid API key required', $e->getMessage());
+        }
+    }
 }
